@@ -1,0 +1,7 @@
+# python>=3.5
+torch>=0.4.1
+pytorch-pretrained-BERT==0.4.0
+pytorch-transformers==1.0.0
+pyyaml
+click
+
