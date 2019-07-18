@@ -108,7 +108,13 @@ class MyPro(DataProcessor):
             self._read_json(os.path.join(data_dir, "test.json")), 'test')
 
     def get_labels(self):
-        return [0, 1]
+        #return [0, 1]
+        # for wb labels
+        import yaml
+        confile = 'config/cls_wb.yaml'
+        conf = yaml.load(open(confile, mode='r', encoding='utf8').read())
+        wb_lables = conf.get('wb_labels', [])
+        return wb_lables
 
     def _create_examples(self, dicts, set_type):
         examples = []
@@ -391,7 +397,7 @@ def main():
     # required parameters
     # 调用add_argument()向ArgumentParser对象添加命令行参数信息，这些信息告诉ArgumentParser对象如何处理命令行参数
     parser.add_argument("--data_dir",
-                        default = '/data/users/zfsun3/text_classification/data/',
+                        default = './data/classify/',
                         type = str,
                         #required = True,
                         help = "The input data dir. Should contain the .tsv files (or other data files) for the task.")
@@ -523,7 +529,7 @@ def main():
 
     if task_name not in processors:
         raise ValueError("Task not found: %s" % (task_name))
-    
+
     processor = processors[task_name]()
     label_list = processor.get_labels()
 
@@ -538,7 +544,7 @@ def main():
 
     # Prepare model
     model = BertForSequenceClassification.from_pretrained(args.bert_model, 
-                cache_dir=PYTORCH_PRETRAINED_BERT_CACHE / 'distributed_{}'.format(args.local_rank))
+                cache_dir=PYTORCH_PRETRAINED_BERT_CACHE / 'distributed_{}'.format(args.local_rank), num_labels=len(label_list))
 
     if args.fp16:
     	model.half()
@@ -627,7 +633,7 @@ def main():
                     else:
                         optimizer.step()
                     model.zero_grad()
-    
+
             f1 = val(model, processor, args, label_list, tokenizer, device)
             if f1 > best_score:
                 best_score = f1
