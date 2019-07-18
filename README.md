@@ -18,6 +18,6 @@ tail -500 data/classify/wb_2k.json | head -250 > data/classify/test.json
 tail -500 data/classify/wb_2k.json | tail -250 > data/classify/val.json
 
 # 执行训练
-python bert.py --do_train
+python bert.py --do_train --max_seq_length=100  --num_train_epochs=100 --train_batch_size=128
 ```
 

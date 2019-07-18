@@ -455,6 +455,10 @@ def main():
                         default = 10.0,
                         type = float,
                         help = "训练的epochs次数")
+    parser.add_argument('--num_patiences', 
+                        default = 5,
+                        type = int, 
+                        help = "容忍连续不提升的epoch次数")
     parser.add_argument("--warmup_proportion",
                         default = 0.1,
                         type = float,
@@ -637,16 +641,16 @@ def main():
             f1 = val(model, processor, args, label_list, tokenizer, device)
             if f1 > best_score:
                 best_score = f1
-                print('*f1 score = {}'.format(f1))
+                print('[+] f1 score = {}'.format(f1))
                 flags = 0
                 checkpoint = {
                     'state_dict': model.state_dict()
                 }
                 torch.save(checkpoint, args.model_save_pth)
             else:
-                print('f1 score = {}'.format(f1))
                 flags += 1
-                if flags >=6:
+                print('[-] f1 score = {}, patiences  = {}'.format(f1, flags))
+                if flags >=args.num_patiences:
                     break
 
     model.load_state_dict(torch.load(args.model_save_pth)['state_dict'])
