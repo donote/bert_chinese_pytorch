@@ -90,11 +90,11 @@ class DataProcessor(object):
 
 
 class MyPro(DataProcessor):
-    '''自定义数据读取方法，针对json文件
-    
+    """自定义数据读取方法，针对json文件
+
     Returns:
         examples: 数据集，包含index、中文文本、类别三个部分
-    '''
+    """
     def get_train_examples(self, data_dir):
         return self._create_examples(
             self._read_json(os.path.join(data_dir, "train.json")), 'train')
@@ -108,7 +108,7 @@ class MyPro(DataProcessor):
             self._read_json(os.path.join(data_dir, "test.json")), 'test')
 
     def get_labels(self):
-        #return [0, 1]
+        # return [0, 1]
         # for wb labels
         import yaml
         confile = 'config/cls_wb.yaml'
@@ -128,7 +128,7 @@ class MyPro(DataProcessor):
 
 
 def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer, show_exp=True):
-    '''Loads a data file into a list of `InputBatch`s.
+    """Loads a data file into a list of `InputBatch`s.
 
     Args:
         examples      : [List] 输入样本，包括question, label, index
@@ -142,7 +142,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
             input_mask : [ListOfInt] 真实字符对应1，补全字符对应0
             segment_ids: [ListOfInt] 句子标识符，第一句全为0，第二句全为1
             label_id   : [ListOfInt] 将Label_list转化为相应的id表示
-    '''
+    """
     label_map = {}
     for (i, label) in enumerate(label_list):
         label_map[label] = i
@@ -186,6 +186,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         tokens = []
         segment_ids = []
         tokens.append("[CLS]")
+        """ 
         segment_ids.append(0)
         for token in tokens_a:
             tokens.append(token)
@@ -199,6 +200,16 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                 segment_ids.append(1)
             tokens.append("[SEP]")
             segment_ids.append(1)
+        """
+        # start modify bych
+        tokens.extend(tokens_a)
+        tokens.append("[SEP]")
+        segment_ids = [0] * len(tokens)
+        if tokens_b:
+            tokens.extend(tokens_b)
+            tokens.append("[SEP]")
+            segment_ids.extend([1]*(len(tokens_b)+1))
+        # end modify bych
 
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
@@ -217,6 +228,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         assert len(segment_ids) == max_seq_length
 
         label_id = label_map[example.label]
+        # show the top5 sample data bych
         if ex_index < 5 and show_exp:
             logger.info("*** Example ***")
             logger.info("guid: %s" % (example.guid))
@@ -224,10 +236,8 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                     [str(x) for x in tokens]))
             logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
             logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-            logger.info(
-                    "segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+            logger.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
             logger.info("label: %s (id = %d)" % (example.label, label_id))
-
         features.append(
                 InputFeatures(input_ids=input_ids,
                               input_mask=input_mask,
@@ -291,6 +301,7 @@ def set_optimizer_params_grad(named_params_optimizer, named_params_model, test_n
 
 def val(model, processor, args, label_list, tokenizer, device):
     '''模型验证
+    todo: 使用processor处理train/test/val的数据，每次都走一边，可以考虑封装成一个函数，提前把train/test/val的数据准备好
     
     Args:
         model: 模型
@@ -356,7 +367,7 @@ def test(model, processor, args, label_list, tokenizer, device):
     '''
     test_examples = processor.get_test_examples(args.data_dir)
     test_features = convert_examples_to_features(
-        test_examples, label_list, args.max_seq_length, tokenizer)
+        test_examples, label_list, args.max_seq_length, tokenizer, show_exp=True)
     all_input_ids = torch.tensor([f.input_ids for f in test_features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in test_features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in test_features], dtype=torch.long)
@@ -390,7 +401,7 @@ def test(model, processor, args, label_list, tokenizer, device):
     return f1
 
 
-def main():
+def arguments():
     # ArgumentParser对象保存了所有必要的信息，用以将命令行参数解析为相应的python数据类型
     parser = argparse.ArgumentParser()
 
@@ -455,9 +466,9 @@ def main():
                         default = 10.0,
                         type = float,
                         help = "训练的epochs次数")
-    parser.add_argument('--num_patiences', 
+    parser.add_argument('--num_patiences',
                         default = 5,
-                        type = int, 
+                        type = int,
                         help = "容忍连续不提升的epoch次数")
     parser.add_argument("--warmup_proportion",
                         default = 0.1,
@@ -492,7 +503,11 @@ def main():
                         default = 128,
                         type = float,
                         help = "Loss scaling, positive power of 2 values can improve fp16 convergence.")
+    return parser
 
+
+def main():
+    parser = arguments()
     args = parser.parse_args()
 
     # 对模型输入进行处理的processor，git上可能都是针对英文的processor
@@ -525,15 +540,17 @@ def main():
     if not args.do_train and not args.do_eval:
         raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
+    # maybe modify bylh
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
         raise ValueError("Output directory ({}) already exists and is not empty.".format(args.output_dir))
     os.makedirs(args.output_dir, exist_ok=True)
 
+    # can be many tasks defined to process bylh
     task_name = args.task_name.lower()
-
     if task_name not in processors:
-        raise ValueError("Task not found: %s" % (task_name))
+        raise ValueError("Task not found: %s" % task_name)
 
+    # processor wrap the samples' info of train/val/test/labels bych
     processor = processors[task_name]()
     label_list = processor.get_labels()
 
@@ -547,11 +564,10 @@ def main():
             len(train_examples) / args.train_batch_size / args.gradient_accumulation_steps * args.num_train_epochs)
 
     # Prepare model
-    model = BertForSequenceClassification.from_pretrained(args.bert_model, 
+    model = BertForSequenceClassification.from_pretrained(args.bert_model,
                 cache_dir=PYTORCH_PRETRAINED_BERT_CACHE / 'distributed_{}'.format(args.local_rank), num_labels=len(label_list))
-
     if args.fp16:
-    	model.half()
+        model.half()
     model.to(device)
     if args.local_rank != -1:
         model = torch.nn.parallel.DistributedDataParallel(model, 
@@ -582,10 +598,10 @@ def main():
                          warmup=args.warmup_proportion,
                          t_total=t_total)
 
+    # do training ...
     global_step = 0
     if args.do_train:
-        train_features = convert_examples_to_features(
-            train_examples, label_list, args.max_seq_length, tokenizer, show_exp=False)
+        train_features = convert_examples_to_features(train_examples, label_list, args.max_seq_length, tokenizer, show_exp=False)
         logger.info("***** Running training *****")
         logger.info("  Num examples = %d", len(train_examples))
         logger.info("  Batch size = %d", args.train_batch_size)
@@ -602,12 +618,14 @@ def main():
         train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
 
         model.train()
+
         best_score = 0
         flags = 0
         for _ in trange(int(args.num_train_epochs), desc="Epoch"):
             for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
+                import pdb;pdb.set_trace()
                 loss = model(input_ids, segment_ids, input_mask, label_ids)
                 if n_gpu > 1:
                     loss = loss.mean() # mean() to average on multi-gpu.
@@ -638,6 +656,7 @@ def main():
                         optimizer.step()
                     model.zero_grad()
 
+            # one epoch finish, do val and save model's parameters bych
             f1 = val(model, processor, args, label_list, tokenizer, device)
             if f1 > best_score:
                 best_score = f1
@@ -655,7 +674,7 @@ def main():
 
     model.load_state_dict(torch.load(args.model_save_pth)['state_dict'])
     test(model, processor, args, label_list, tokenizer, device)
-	
+
 
 if __name__ == '__main__':
-	main()
+    main()

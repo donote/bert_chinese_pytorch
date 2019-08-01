@@ -7,6 +7,7 @@ import json
 import codecs
 import click
 
+
 @click.command()
 @click.option('-i', 'input', type=click.Path(file_okay=True, dir_okay=False, exists=True))
 @click.option('-o', 'output', type=click.Path())
@@ -24,6 +25,7 @@ def text2json(input, output):
             elem_str = json.dumps(elem)
             outfd.write(elem_str)
             outfd.write('\n')
+
 
 if __name__ == '__main__':
     text2json()
