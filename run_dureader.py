@@ -198,7 +198,7 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
             segment_ids.extend([1]*doc_span.length)
             segment_ids.append(1)
 
-            input_ids = tokenizer.convert_tokens_to_ids(tokens)
+            input_ids = tokenizer.convert_tokens_to_ids(tokens, unk=True)
 
             # The mask has 1 for real tokens and 0 for padding tokens. Only real
             # tokens are attended to.
